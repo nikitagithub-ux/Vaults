@@ -4,6 +4,8 @@ from backend.database import get_db
 from backend.models.user import User
 from backend.schemas.transaction import CreateTransactionRequest, TransactionResponse
 from backend.services.auth_service import get_current_user
+from backend.services.ai_service import categorize_merchant
+from backend.models.vault import Vault
 from backend.services.transaction_service import (
     make_payment,
     get_vault_transactions,
@@ -58,3 +60,22 @@ def vault_transactions(
             detail=error
         )
     return transactions
+
+@router.post("/categorize")
+def categorize(
+    request: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    vaults = db.query(Vault).filter(
+        Vault.user_id == current_user.id
+    ).all()
+
+    print(f"Vaults being sent to AI: {[v.name for v in vaults]}")
+
+    result = categorize_merchant(
+        merchant_name=request.get("merchant_name", ""),
+        upi_id=request.get("upi_id", ""),
+        vaults=vaults
+    )
+    return result

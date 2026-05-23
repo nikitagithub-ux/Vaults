@@ -46,12 +46,13 @@
   <div class="form-group">
     <label class="form-label">Merchant Name (optional)</label>
     <input type="text" id="merchant-name" placeholder="e.g. Dominos Pizza"
-      oninput="checkViolation()" />
+      oninput="onMerchantInput()" />
   </div>
 
   <div class="form-group">
     <label class="form-label">UPI ID (optional)</label>
-    <input type="text" id="upi-id" placeholder="e.g. dominos@icici" />
+    <input type="text" id="upi-id" placeholder="e.g. dominos@icici"
+      oninput="onMerchantInput()" />
   </div>
 
   <div class="form-group">
@@ -73,6 +74,20 @@
     <div class="form-group">
       <label class="form-label">Reason for Override</label>
       <input type="text" id="override-reason" placeholder="Why are you paying from this vault?" />
+    </div>
+  </div>
+
+  <div id="ai-suggestion" style="display:none; margin-bottom:1rem;">
+    <div class="card" style="border-color: rgba(123,110,246,0.3); padding:1rem;">
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+        <span>🤖</span>
+        <p style="font-size:0.85rem; font-weight:600; color:var(--accent);">AI Suggestion</p>
+        <div id="ai-loading" style="display:none;">
+          <div class="spinner" style="width:14px; height:14px; margin:0;"></div>
+        </div>
+      </div>
+      <p id="ai-reason" style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.75rem;"></p>
+      <div id="ai-vault-suggestions" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
     </div>
   </div>
 
@@ -110,6 +125,101 @@
   requireAuth();
 
   let vaults = [];
+
+  let aiTimeout = null;
+
+  function onMerchantInput() {
+    checkViolation();
+
+    const merchant = document.getElementById('merchant-name').value.trim();
+    const upiId = document.getElementById('upi-id').value.trim();
+
+    if (!merchant && !upiId) {
+      document.getElementById('ai-suggestion').style.display = 'none';
+      return;
+    }
+
+    // debounce — wait 800ms after user stops typing
+    clearTimeout(aiTimeout);
+    aiTimeout = setTimeout(() => {
+      getAISuggestion(merchant, upiId);
+    }, 800);
+  }
+
+  async function getAISuggestion(merchant, upiId) {
+    const aiBox = document.getElementById('ai-suggestion');
+    const aiLoading = document.getElementById('ai-loading');
+    const aiReason = document.getElementById('ai-reason');
+    const aiSuggestions = document.getElementById('ai-vault-suggestions');
+
+    aiBox.style.display = 'block';
+    aiLoading.style.display = 'block';
+    aiSuggestions.innerHTML = '';
+    aiReason.textContent = 'Analyzing merchant...';
+
+    try {
+      const result = await apiCall('/transactions/categorize', 'POST', {
+        merchant_name: merchant,
+        upi_id: upiId
+      });
+
+      aiLoading.style.display = 'none';
+      aiReason.textContent = result.reason || 'Based on merchant details';
+
+      if (result.suggested_vault) {
+        // find the vault in our list
+        const matchedVault = vaults.find(v =>
+          v.name.toLowerCase() === result.suggested_vault.toLowerCase()
+        );
+
+        if (matchedVault) {
+          aiSuggestions.innerHTML = `
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">
+              Suggested vault:
+            </p>
+            <button class="btn-secondary" style="text-align:left; padding:0.75rem 1rem;"
+              onclick="selectSuggestedVault('${matchedVault.id}', '${result.category || ''}')">
+              <span style="font-weight:600;">${matchedVault.name}</span>
+              <span style="color:var(--text-secondary); font-size:0.8rem; margin-left:0.5rem;">
+                ${formatCurrency(matchedVault.current_balance)} available
+              </span>
+              <span class="badge badge-info" style="float:right;">Use this</span>
+            </button>
+          `;
+        } else {
+          aiSuggestions.innerHTML = `
+            <p style="font-size:0.8rem; color:var(--text-secondary);">
+              Suggested: <strong>${result.suggested_vault}</strong> — vault not found. Pick one manually.
+            </p>`;
+        }
+
+        // auto fill category
+        if (result.category) {
+          document.getElementById('category').value = result.category;
+          checkViolation();
+        }
+
+      } else {
+        aiSuggestions.innerHTML = `
+          <p style="font-size:0.8rem; color:var(--text-secondary);">
+            Couldn't determine the right vault. Please select one manually.
+          </p>`;
+      }
+
+    } catch (err) {
+      aiLoading.style.display = 'none';
+      aiReason.textContent = 'AI unavailable. Please select vault manually.';
+    }
+  }
+
+  function selectSuggestedVault(vaultId, category) {
+    document.getElementById('vault-select').value = vaultId;
+    onVaultChange();
+    if (category) {
+      document.getElementById('category').value = category;
+    }
+    checkViolation();
+  }
 
   async function loadVaults() {
     try {
