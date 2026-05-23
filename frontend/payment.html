@@ -21,62 +21,25 @@
   <p style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:1.5rem;">Pay from a specific vault</p>
 
   <div id="alert-container"></div>
-  <div id="violation-container"></div>
 
-  <div class="form-group">
-    <label class="form-label">Pay From Vault</label>
-    <select id="vault-select" onchange="onVaultChange()">
-      <option value="">Select a vault...</option>
-    </select>
-  </div>
+  <!-- Step 1 — Merchant Info -->
+  <div class="card" style="margin-bottom:1rem; padding:1.25rem;">
+    <p class="section-title" style="margin-bottom:0.75rem;">Step 1 — Who are you paying?</p>
 
-  <div id="vault-balance-info" style="display:none; margin-bottom:1rem;">
-    <div class="stat-card">
-      <p class="stat-label">Available Balance</p>
-      <p class="stat-value" id="vault-balance-display">₹0.00</p>
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label class="form-label">Amount (₹)</label>
-    <input type="number" id="amount" placeholder="0.00" min="1" step="0.01"
-      oninput="checkViolation()" />
-  </div>
-
-  <div class="form-group">
-    <label class="form-label">Merchant Name (optional)</label>
-    <input type="text" id="merchant-name" placeholder="e.g. Dominos Pizza"
-      oninput="onMerchantInput()" />
-  </div>
-
-  <div class="form-group">
-    <label class="form-label">UPI ID (optional)</label>
-    <input type="text" id="upi-id" placeholder="e.g. dominos@icici"
-      oninput="onMerchantInput()" />
-  </div>
-
-  <div class="form-group">
-    <label class="form-label">Category (optional)</label>
-    <input type="text" id="category" placeholder="e.g. food, rent, shopping"
-      oninput="checkViolation()" />
-  </div>
-
-  <div class="form-group">
-    <label class="form-label">Description (optional)</label>
-    <input type="text" id="description" placeholder="What's this payment for?" />
-  </div>
-
-  <div id="override-section" style="display:none;">
-    <div class="violation-banner">
-      <p class="violation-title">⚠️ Possible Vault Mismatch</p>
-      <p class="violation-text" id="violation-text">This payment may not match this vault's purpose. A 1.5% penalty will be charged.</p>
-    </div>
     <div class="form-group">
-      <label class="form-label">Reason for Override</label>
-      <input type="text" id="override-reason" placeholder="Why are you paying from this vault?" />
+      <label class="form-label">Merchant Name</label>
+      <input type="text" id="merchant-name" placeholder="e.g. Dominos Pizza"
+        oninput="onMerchantInput()" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">UPI ID (optional)</label>
+      <input type="text" id="upi-id" placeholder="e.g. dominos@icici"
+        oninput="onMerchantInput()" />
     </div>
   </div>
 
+  <!-- AI Suggestion -->
   <div id="ai-suggestion" style="display:none; margin-bottom:1rem;">
     <div class="card" style="border-color: rgba(123,110,246,0.3); padding:1rem;">
       <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
@@ -91,14 +54,66 @@
     </div>
   </div>
 
-  <button class="btn-primary" onclick="handlePayment()" style="margin-top:0.5rem;">
+  <!-- Step 2 — Vault Selection -->
+  <div class="card" style="margin-bottom:1rem; padding:1.25rem;">
+    <p class="section-title" style="margin-bottom:0.75rem;">Step 2 — Which vault?</p>
+
+    <div class="form-group" style="margin-bottom:0.75rem;">
+      <label class="form-label">Pay From Vault</label>
+      <select id="vault-select" onchange="onVaultChange()">
+        <option value="">Select a vault...</option>
+      </select>
+    </div>
+
+    <div id="vault-balance-info" style="display:none;">
+      <div class="stat-card">
+        <p class="stat-label">Available Balance</p>
+        <p class="stat-value" id="vault-balance-display">₹0.00</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Violation Warning -->
+  <div id="override-section" style="display:none; margin-bottom:1rem;">
+    <div class="violation-banner">
+      <p class="violation-title">⚠️ Possible Vault Mismatch</p>
+      <p class="violation-text" id="violation-text">This payment may not match this vault's purpose. A 1.5% penalty will be charged.</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reason for Override</label>
+      <input type="text" id="override-reason" placeholder="Why are you paying from this vault?" />
+    </div>
+  </div>
+
+  <!-- Step 3 — Payment Details -->
+  <div class="card" style="margin-bottom:1rem; padding:1.25rem;">
+    <p class="section-title" style="margin-bottom:0.75rem;">Step 3 — Payment Details</p>
+
+    <div class="form-group">
+      <label class="form-label">Amount (₹)</label>
+      <input type="number" id="amount" placeholder="0.00" min="1" step="0.01" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Category (optional)</label>
+      <input type="text" id="category" placeholder="e.g. food, rent, shopping" />
+      <p class="form-hint">AI will auto-fill this based on merchant</p>
+    </div>
+
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Description (optional)</label>
+      <input type="text" id="description" placeholder="What's this payment for?" />
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="handlePayment()">
     Pay Now
   </button>
 
 </div>
 
 <nav class="bottom-nav">
-  <button class="bottom-nav-item active" onclick="window.location.href='dashboard.html'">
+  <button class="bottom-nav-item" onclick="window.location.href='dashboard.html'">
     <span class="bottom-nav-icon">🏠</span>
     <span>Home</span>
   </button>
@@ -106,7 +121,7 @@
     <span class="bottom-nav-icon">📋</span>
     <span>History</span>
   </button>
-  <button class="bottom-nav-item" onclick="window.location.href='payment.html'">
+  <button class="bottom-nav-item active">
     <span class="bottom-nav-icon">💸</span>
     <span>Pay</span>
   </button>
@@ -125,101 +140,7 @@
   requireAuth();
 
   let vaults = [];
-
   let aiTimeout = null;
-
-  function onMerchantInput() {
-    checkViolation();
-
-    const merchant = document.getElementById('merchant-name').value.trim();
-    const upiId = document.getElementById('upi-id').value.trim();
-
-    if (!merchant && !upiId) {
-      document.getElementById('ai-suggestion').style.display = 'none';
-      return;
-    }
-
-    // debounce — wait 800ms after user stops typing
-    clearTimeout(aiTimeout);
-    aiTimeout = setTimeout(() => {
-      getAISuggestion(merchant, upiId);
-    }, 800);
-  }
-
-  async function getAISuggestion(merchant, upiId) {
-    const aiBox = document.getElementById('ai-suggestion');
-    const aiLoading = document.getElementById('ai-loading');
-    const aiReason = document.getElementById('ai-reason');
-    const aiSuggestions = document.getElementById('ai-vault-suggestions');
-
-    aiBox.style.display = 'block';
-    aiLoading.style.display = 'block';
-    aiSuggestions.innerHTML = '';
-    aiReason.textContent = 'Analyzing merchant...';
-
-    try {
-      const result = await apiCall('/transactions/categorize', 'POST', {
-        merchant_name: merchant,
-        upi_id: upiId
-      });
-
-      aiLoading.style.display = 'none';
-      aiReason.textContent = result.reason || 'Based on merchant details';
-
-      if (result.suggested_vault) {
-        // find the vault in our list
-        const matchedVault = vaults.find(v =>
-          v.name.toLowerCase() === result.suggested_vault.toLowerCase()
-        );
-
-        if (matchedVault) {
-          aiSuggestions.innerHTML = `
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">
-              Suggested vault:
-            </p>
-            <button class="btn-secondary" style="text-align:left; padding:0.75rem 1rem;"
-              onclick="selectSuggestedVault('${matchedVault.id}', '${result.category || ''}')">
-              <span style="font-weight:600;">${matchedVault.name}</span>
-              <span style="color:var(--text-secondary); font-size:0.8rem; margin-left:0.5rem;">
-                ${formatCurrency(matchedVault.current_balance)} available
-              </span>
-              <span class="badge badge-info" style="float:right;">Use this</span>
-            </button>
-          `;
-        } else {
-          aiSuggestions.innerHTML = `
-            <p style="font-size:0.8rem; color:var(--text-secondary);">
-              Suggested: <strong>${result.suggested_vault}</strong> — vault not found. Pick one manually.
-            </p>`;
-        }
-
-        // auto fill category
-        if (result.category) {
-          document.getElementById('category').value = result.category;
-          checkViolation();
-        }
-
-      } else {
-        aiSuggestions.innerHTML = `
-          <p style="font-size:0.8rem; color:var(--text-secondary);">
-            Couldn't determine the right vault. Please select one manually.
-          </p>`;
-      }
-
-    } catch (err) {
-      aiLoading.style.display = 'none';
-      aiReason.textContent = 'AI unavailable. Please select vault manually.';
-    }
-  }
-
-  function selectSuggestedVault(vaultId, category) {
-    document.getElementById('vault-select').value = vaultId;
-    onVaultChange();
-    if (category) {
-      document.getElementById('category').value = category;
-    }
-    checkViolation();
-  }
 
   async function loadVaults() {
     try {
@@ -248,6 +169,119 @@
     }
   }
 
+  function onMerchantInput() {
+    const merchant = document.getElementById('merchant-name').value.trim();
+    const upiId = document.getElementById('upi-id').value.trim();
+
+    if (!merchant && !upiId) {
+      document.getElementById('ai-suggestion').style.display = 'none';
+      return;
+    }
+
+    clearTimeout(aiTimeout);
+    aiTimeout = setTimeout(() => {
+      getAISuggestion(merchant, upiId);
+    }, 800);
+  }
+
+  async function getAISuggestion(merchant, upiId) {
+    const aiBox = document.getElementById('ai-suggestion');
+    const aiLoading = document.getElementById('ai-loading');
+    const aiReason = document.getElementById('ai-reason');
+    const aiSuggestions = document.getElementById('ai-vault-suggestions');
+
+    aiBox.style.display = 'block';
+    aiLoading.style.display = 'block';
+    aiSuggestions.innerHTML = '';
+    aiReason.textContent = 'Analyzing merchant...';
+
+    try {
+      const result = await apiCall('/transactions/categorize', 'POST', {
+        merchant_name: merchant,
+        upi_id: upiId
+      });
+
+      aiLoading.style.display = 'none';
+      aiReason.textContent = result.reason || 'Based on merchant details';
+
+      if (result.category) {
+        document.getElementById('category').value = result.category;
+      }
+
+      if (result.suggested_vaults && result.suggested_vaults.length > 0) {
+        const header = result.suggested_vaults.length > 1
+          ? 'Suggested vaults (ranked by relevance):'
+          : 'Suggested vault:';
+
+        aiSuggestions.innerHTML = `
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.5rem;">
+            ${header}
+          </p>
+          ${result.suggested_vaults.map((vaultName, index) => {
+            const matchedVault = vaults.find(v =>
+              v.name.toLowerCase() === vaultName.toLowerCase()
+            );
+            if (!matchedVault) return '';
+            return `
+              <button class="btn-secondary"
+                style="text-align:left; padding:0.75rem 1rem; margin-bottom:0.5rem;
+                  ${index === 0 ? 'border-color: var(--accent);' : ''}"
+                onclick="selectSuggestedVault('${matchedVault.id}', '${result.category || ''}')">
+                <span style="font-weight:600;">${matchedVault.name}</span>
+                ${index === 0 ? '<span class="badge badge-info" style="float:right;">Best match</span>' : ''}
+                <br/>
+                <span style="color:var(--text-secondary); font-size:0.8rem;">
+                  ${formatCurrency(matchedVault.current_balance)} available
+                </span>
+              </button>`;
+          }).join('')}
+          <button class="btn-secondary"
+            style="text-align:left; padding:0.75rem 1rem; color:var(--text-muted);"
+            onclick="document.getElementById('ai-suggestion').style.display='none'">
+            Pick manually instead
+          </button>
+        `;
+      } else {
+        aiSuggestions.innerHTML = `
+          <p style="font-size:0.8rem; color:var(--text-secondary);">
+            No matching vault found. Please select one manually.
+          </p>`;
+      }
+
+      // AI based violation detection
+      const selectedVaultId = document.getElementById('vault-select').value;
+      if (selectedVaultId && result.suggested_vaults && result.suggested_vaults.length > 0) {
+        const selectedVault = vaults.find(v => v.id === selectedVaultId);
+        const isViolation = selectedVault &&
+          !result.suggested_vaults.some(v =>
+            v.toLowerCase() === selectedVault.name.toLowerCase()
+          );
+
+        const overrideSection = document.getElementById('override-section');
+        if (isViolation) {
+          overrideSection.style.display = 'block';
+          document.getElementById('violation-text').textContent =
+            `AI suggests "${result.suggested_vaults[0]}" but you selected "${selectedVault.name}". A 1.5% penalty will be charged.`;
+        } else {
+          overrideSection.style.display = 'none';
+        }
+      }
+
+    } catch (err) {
+      aiLoading.style.display = 'none';
+      aiReason.textContent = 'AI unavailable. Please select vault manually.';
+    }
+  }
+
+  function selectSuggestedVault(vaultId, category) {
+    document.getElementById('vault-select').value = vaultId;
+    onVaultChange();
+    if (category) {
+      document.getElementById('category').value = category;
+    }
+    document.getElementById('override-section').style.display = 'none';
+  }
+
   function onVaultChange() {
     const select = document.getElementById('vault-select');
     const selected = select.options[select.selectedIndex];
@@ -259,36 +293,6 @@
         formatCurrency(selected.dataset.balance);
     } else {
       balanceInfo.style.display = 'none';
-    }
-    checkViolation();
-  }
-
-  function checkViolation() {
-    const select = document.getElementById('vault-select');
-    const selected = select.options[select.selectedIndex];
-    const category = document.getElementById('category').value.toLowerCase().trim();
-    const merchant = document.getElementById('merchant-name').value.toLowerCase().trim();
-    const overrideSection = document.getElementById('override-section');
-
-    if (!select.value || (!category && !merchant)) {
-      overrideSection.style.display = 'none';
-      return;
-    }
-
-    const vaultName = (selected.dataset.name || '').toLowerCase();
-    const vaultDesc = (selected.dataset.desc || '').toLowerCase();
-    const searchTerms = category || merchant;
-
-    const matches = vaultName.includes(searchTerms) ||
-      vaultDesc.includes(searchTerms) ||
-      searchTerms.includes(vaultName);
-
-    if (!matches && searchTerms) {
-      overrideSection.style.display = 'block';
-      document.getElementById('violation-text').textContent =
-        `"${document.getElementById('merchant-name').value || category}" may not belong in your "${selected.dataset.name}" vault. A 1.5% penalty will be charged.`;
-    } else {
-      overrideSection.style.display = 'none';
     }
   }
 
@@ -323,21 +327,11 @@
 
       if (result.is_vault_violation) {
         showAlert('alert-container',
-          `Payment recorded with ⚠️ violation. Penalty charged: ${formatCurrency(result.penalty_amount)}`,
+          `Payment recorded ⚠️ Penalty charged: ${formatCurrency(result.penalty_amount)}`,
           'warning');
       } else {
         showAlert('alert-container', 'Payment recorded successfully!', 'success');
       }
-
-      document.getElementById('amount').value = '';
-      document.getElementById('merchant-name').value = '';
-      document.getElementById('upi-id').value = '';
-      document.getElementById('category').value = '';
-      document.getElementById('description').value = '';
-      document.getElementById('override-reason').value = '';
-      document.getElementById('override-section').style.display = 'none';
-      document.getElementById('vault-select').value = '';
-      document.getElementById('vault-balance-info').style.display = 'none';
 
       setTimeout(() => {
         window.location.href = 'dashboard.html';

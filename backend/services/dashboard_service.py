@@ -4,6 +4,7 @@ from backend.models.vault import Vault
 from backend.models.bank_account import BankAccount
 from backend.models.transaction import Transaction, TransactionType
 from datetime import datetime, timezone
+from sqlalchemy import func, and_
 
 def get_dashboard(db: Session, user_id: str):
     # get all bank accounts
@@ -30,11 +31,12 @@ def get_dashboard(db: Session, user_id: str):
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     monthly_spent = db.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == TransactionType.DEBIT,
-        Transaction.created_at >= month_start,
-        Transaction.vault_id != None,
-        Transaction.category != "penalty"
+        and_(
+            Transaction.user_id == user_id,
+            Transaction.type == TransactionType.DEBIT,
+            Transaction.created_at >= month_start,
+            Transaction.vault_id != None
+        )
     ).scalar() or 0
 
     # get recent 10 transactions
