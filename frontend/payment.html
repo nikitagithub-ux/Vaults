@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0F0F13" />
+  <title>Vaults — Make Payment</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <button class="btn-secondary btn-sm" onclick="history.back()">← Back</button>
+  <span class="nav-brand">V<span>aults</span></span>
+  <div></div>
+</nav>
+
+<div class="page page-with-nav">
+
+  <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:0.25rem; letter-spacing:-0.02em;">Make a Payment</h2>
+  <p style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:1.5rem;">Pay from a specific vault</p>
+
+  <div id="alert-container"></div>
+  <div id="violation-container"></div>
+
+  <div class="form-group">
+    <label class="form-label">Pay From Vault</label>
+    <select id="vault-select" onchange="onVaultChange()">
+      <option value="">Select a vault...</option>
+    </select>
+  </div>
+
+  <div id="vault-balance-info" style="display:none; margin-bottom:1rem;">
+    <div class="stat-card">
+      <p class="stat-label">Available Balance</p>
+      <p class="stat-value" id="vault-balance-display">₹0.00</p>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Amount (₹)</label>
+    <input type="number" id="amount" placeholder="0.00" min="1" step="0.01"
+      oninput="checkViolation()" />
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Merchant Name (optional)</label>
+    <input type="text" id="merchant-name" placeholder="e.g. Dominos Pizza"
+      oninput="checkViolation()" />
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">UPI ID (optional)</label>
+    <input type="text" id="upi-id" placeholder="e.g. dominos@icici" />
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Category (optional)</label>
+    <input type="text" id="category" placeholder="e.g. food, rent, shopping"
+      oninput="checkViolation()" />
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Description (optional)</label>
+    <input type="text" id="description" placeholder="What's this payment for?" />
+  </div>
+
+  <div id="override-section" style="display:none;">
+    <div class="violation-banner">
+      <p class="violation-title">⚠️ Possible Vault Mismatch</p>
+      <p class="violation-text" id="violation-text">This payment may not match this vault's purpose. A 1.5% penalty will be charged.</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reason for Override</label>
+      <input type="text" id="override-reason" placeholder="Why are you paying from this vault?" />
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="handlePayment()" style="margin-top:0.5rem;">
+    Pay Now
+  </button>
+
+</div>
+
+<nav class="bottom-nav">
+  <button class="bottom-nav-item active" onclick="window.location.href='dashboard.html'">
+    <span class="bottom-nav-icon">🏠</span>
+    <span>Home</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='transactions.html'">
+    <span class="bottom-nav-icon">📋</span>
+    <span>History</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='payment.html'">
+    <span class="bottom-nav-icon">💸</span>
+    <span>Pay</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='vault.html'">
+    <span class="bottom-nav-icon">🏦</span>
+    <span>Vaults</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='profile.html'">
+    <span class="bottom-nav-icon">👤</span>
+    <span>Profile</span>
+  </button>
+</nav>
+
+<script src="app.js"></script>
+<script>
+  requireAuth();
+
+  let vaults = [];
+
+  async function loadVaults() {
+    try {
+      vaults = await apiCall('/vaults');
+      const select = document.getElementById('vault-select');
+      const regular = vaults.filter(v => v.name !== 'Penalty Pool' && !v.is_locked);
+
+      regular.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.name} — ${formatCurrency(v.current_balance)}`;
+        opt.dataset.balance = v.current_balance;
+        opt.dataset.desc = v.description || '';
+        opt.dataset.name = v.name;
+        select.appendChild(opt);
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const preselect = params.get('vault');
+      if (preselect) {
+        select.value = preselect;
+        onVaultChange();
+      }
+    } catch (err) {
+      showAlert('alert-container', err.message);
+    }
+  }
+
+  function onVaultChange() {
+    const select = document.getElementById('vault-select');
+    const selected = select.options[select.selectedIndex];
+    const balanceInfo = document.getElementById('vault-balance-info');
+
+    if (select.value) {
+      balanceInfo.style.display = 'block';
+      document.getElementById('vault-balance-display').textContent =
+        formatCurrency(selected.dataset.balance);
+    } else {
+      balanceInfo.style.display = 'none';
+    }
+    checkViolation();
+  }
+
+  function checkViolation() {
+    const select = document.getElementById('vault-select');
+    const selected = select.options[select.selectedIndex];
+    const category = document.getElementById('category').value.toLowerCase().trim();
+    const merchant = document.getElementById('merchant-name').value.toLowerCase().trim();
+    const overrideSection = document.getElementById('override-section');
+
+    if (!select.value || (!category && !merchant)) {
+      overrideSection.style.display = 'none';
+      return;
+    }
+
+    const vaultName = (selected.dataset.name || '').toLowerCase();
+    const vaultDesc = (selected.dataset.desc || '').toLowerCase();
+    const searchTerms = category || merchant;
+
+    const matches = vaultName.includes(searchTerms) ||
+      vaultDesc.includes(searchTerms) ||
+      searchTerms.includes(vaultName);
+
+    if (!matches && searchTerms) {
+      overrideSection.style.display = 'block';
+      document.getElementById('violation-text').textContent =
+        `"${document.getElementById('merchant-name').value || category}" may not belong in your "${selected.dataset.name}" vault. A 1.5% penalty will be charged.`;
+    } else {
+      overrideSection.style.display = 'none';
+    }
+  }
+
+  async function handlePayment() {
+    const vaultId = document.getElementById('vault-select').value;
+    const amount = document.getElementById('amount').value;
+    const merchant = document.getElementById('merchant-name').value.trim();
+    const upiId = document.getElementById('upi-id').value.trim();
+    const category = document.getElementById('category').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const overrideReason = document.getElementById('override-reason').value.trim();
+
+    if (!vaultId) {
+      showAlert('alert-container', 'Please select a vault');
+      return;
+    }
+    if (!amount || parseFloat(amount) <= 0) {
+      showAlert('alert-container', 'Please enter a valid amount');
+      return;
+    }
+
+    try {
+      const result = await apiCall('/transactions', 'POST', {
+        vault_id: vaultId,
+        amount: parseFloat(amount),
+        merchant_name: merchant || null,
+        upi_id: upiId || null,
+        category: category || null,
+        description: description || null,
+        override_reason: overrideReason || null
+      });
+
+      if (result.is_vault_violation) {
+        showAlert('alert-container',
+          `Payment recorded with ⚠️ violation. Penalty charged: ${formatCurrency(result.penalty_amount)}`,
+          'warning');
+      } else {
+        showAlert('alert-container', 'Payment recorded successfully!', 'success');
+      }
+
+      document.getElementById('amount').value = '';
+      document.getElementById('merchant-name').value = '';
+      document.getElementById('upi-id').value = '';
+      document.getElementById('category').value = '';
+      document.getElementById('description').value = '';
+      document.getElementById('override-reason').value = '';
+      document.getElementById('override-section').style.display = 'none';
+      document.getElementById('vault-select').value = '';
+      document.getElementById('vault-balance-info').style.display = 'none';
+
+      setTimeout(() => {
+        window.location.href = 'dashboard.html';
+      }, 1500);
+
+    } catch (err) {
+      showAlert('alert-container', err.message);
+    }
+  }
+
+  loadVaults();
+</script>
+
+</body>
+</html>

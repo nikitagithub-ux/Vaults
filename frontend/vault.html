@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0F0F13" />
+  <title>Vaults — Vault Detail</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="btn-secondary btn-sm" onclick="window.location.href='dashboard.html'">← Back</button>
+  <span class="nav-brand">V<span>aults</span></span>
+  <button class="btn-secondary btn-sm" id="btn-delete" style="display:none; background:rgba(242,92,84,0.15); color:var(--danger); border-color:rgba(242,92,84,0.3);">Delete</button>
+</nav>
+
+<div class="page page-with-nav" id="main-content">
+  <div class="loading">
+    <div class="spinner"></div>
+    Loading...
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="bottom-nav-item active" onclick="window.location.href='dashboard.html'">
+    <span class="bottom-nav-icon">🏠</span>
+    <span>Home</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='transactions.html'">
+    <span class="bottom-nav-icon">📋</span>
+    <span>History</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='payment.html'">
+    <span class="bottom-nav-icon">💸</span>
+    <span>Pay</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='vault.html'">
+    <span class="bottom-nav-icon">🏦</span>
+    <span>Vaults</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='profile.html'">
+    <span class="bottom-nav-icon">👤</span>
+    <span>Profile</span>
+  </button>
+</nav>
+
+<style>
+  .vault-header {
+    padding: 1.5rem 0 1rem;
+    text-align: center;
+  }
+
+  .vault-color-dot {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+
+  .vault-header-name {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+  }
+
+  .vault-header-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .vault-balance-big {
+    text-align: center;
+    padding: 1rem 0;
+  }
+
+  .vault-balance-amount {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .vault-balance-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+  }
+
+  .rule-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rule-item:last-child {
+    border-bottom: none;
+  }
+
+  .rule-info {
+    flex: 1;
+  }
+
+  .rule-type {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .rule-threshold {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 200;
+    padding: 1rem;
+  }
+
+  .modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+  }
+</style>
+
+<script src="app.js"></script>
+<script>
+  requireAuth();
+
+  const params = new URLSearchParams(window.location.search);
+  const vaultId = params.get('id');
+
+  let currentVault = null;
+  let allVaults = [];
+
+  async function loadVaultDetail() {
+    try {
+      if (vaultId) {
+        await loadSpecificVault(vaultId);
+      } else {
+        await loadAllVaults();
+      }
+    } catch (err) {
+      document.getElementById('main-content').innerHTML =
+        `<div class="alert alert-danger">${err.message}</div>`;
+    }
+  }
+
+  async function loadSpecificVault(id) {
+    const [vault, transactions, rules] = await Promise.all([
+      apiCall(`/vaults/${id}`),
+      apiCall(`/transactions/vault/${id}`),
+      apiCall(`/vault-rules/${id}`)
+    ]);
+
+    currentVault = vault;
+    const color = vault.color || '#7B6EF6';
+    const pct = getBalancePercentage(vault.current_balance, vault.allocated_amount);
+
+    if (vault.name !== 'Penalty Pool') {
+      document.getElementById('btn-delete').style.display = 'block';
+      document.getElementById('btn-delete').onclick = () => confirmDelete(vault);
+    }
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="vault-header">
+        <div class="vault-color-dot" style="background:${color}20; border: 2px solid ${color};">
+          🏦
+        </div>
+        <h1 class="vault-header-name">${vault.name}</h1>
+        ${vault.description ? `<p class="vault-header-desc">${vault.description}</p>` : ''}
+      </div>
+
+      <div class="vault-balance-big">
+        <p class="vault-balance-amount" style="color:${color};">${formatCurrency(vault.current_balance)}</p>
+        <p class="vault-balance-label">available balance</p>
+      </div>
+
+      <div class="stat-grid" style="margin-bottom:1rem;">
+        <div class="stat-card">
+          <p class="stat-label">Allocated</p>
+          <p class="stat-value">${formatCurrency(vault.allocated_amount)}</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Remaining</p>
+          <p class="stat-value">${vault.allocated_amount > 0 ? pct + '%' : 'N/A'}</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="progress-bar" style="height:8px;">
+          <div class="progress-fill" style="width:${pct}%; background:${color};"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem;">
+        <p class="section-title">Spending Chart</p>
+        <div class="chart-container" style="height:180px;">
+          <canvas id="spendChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+          <p class="section-title" style="margin-bottom:0;">Rules</p>
+          <button class="btn-secondary btn-sm" onclick="showAddRuleModal('${vault.id}')">+ Add Rule</button>
+        </div>
+        ${rules.length === 0 ? `
+          <p style="font-size:0.85rem; color:var(--text-muted);">No rules set for this vault.</p>` :
+          rules.map(r => `
+            <div class="rule-item">
+              <div class="rule-info">
+                <p class="rule-type">${formatRuleType(r.rule_type)}</p>
+                <p class="rule-threshold">${formatRuleThreshold(r)}</p>
+              </div>
+              <button class="btn-secondary btn-sm"
+                style="color:var(--danger); border-color:rgba(242,92,84,0.3);"
+                onclick="deleteRule('${r.id}')">Remove</button>
+            </div>`).join('')}
+      </div>
+
+      <p class="section-title">Transactions</p>
+      <div class="card">
+        ${transactions.length === 0 ? `
+          <div class="empty-state" style="padding:1.5rem;">
+            <p class="empty-state-text">No transactions yet</p>
+          </div>` :
+          transactions.map(t => `
+            <div class="transaction-item">
+              <div class="transaction-icon">${getTransactionEmoji(t)}</div>
+              <div class="transaction-info">
+                <p class="transaction-name">${t.merchant_name || t.description || 'Transaction'}</p>
+                <p class="transaction-meta">${formatDate(t.created_at)} · ${formatTime(t.created_at)}</p>
+                ${t.is_vault_violation ? `<span class="badge badge-warning" style="margin-top:4px;">⚠️ Violation</span>` : ''}
+              </div>
+              <p class="transaction-amount ${t.type}">${t.type === 'debit' ? '-' : '+'}${formatCurrency(t.amount)}</p>
+            </div>`).join('')}
+      </div>
+    `;
+
+    renderSpendChart(transactions, color);
+  }
+
+  async function loadAllVaults() {
+    allVaults = await apiCall('/vaults');
+    const regularVaults = allVaults.filter(v => v.name !== 'Penalty Pool');
+
+    document.getElementById('main-content').innerHTML = `
+      <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:1.25rem; letter-spacing:-0.02em;">Your Vaults</h2>
+
+      <div id="alert-container"></div>
+
+      <button class="btn-primary" style="margin-bottom:1.25rem;" onclick="showCreateVaultModal()">
+        + Create New Vault
+      </button>
+
+      ${regularVaults.length === 0 ? `
+        <div class="empty-state">
+          <div class="empty-state-icon">🏦</div>
+          <p class="empty-state-text">No vaults yet. Create your first one!</p>
+        </div>` :
+        regularVaults.map(v => {
+          const color = v.color || '#7B6EF6';
+          const pct = getBalancePercentage(v.current_balance, v.allocated_amount);
+          return `
+            <div class="vault-card" style="--vault-color:${color}; margin-bottom:0.75rem;"
+              onclick="window.location.href='vault.html?id=${v.id}'">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                  <p class="vault-card-name">${v.name}</p>
+                  ${v.description ? `<p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.5rem;">${v.description}</p>` : ''}
+                </div>
+                <span class="badge" style="background:${color}20; color:${color};">${v.allocated_amount > 0 ? pct + '%' : 'No allocation'}</span>
+              </div>
+              <p class="vault-card-balance">${formatCurrency(v.current_balance)}</p>
+              <p class="vault-card-meta">of ${formatCurrency(v.allocated_amount)} allocated</p>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width:${pct}%; background:${color};"></div>
+              </div>
+            </div>`;
+        }).join('')}
+    `;
+  }
+
+  function renderSpendChart(transactions, color) {
+    const ctx = document.getElementById('spendChart');
+    if (!ctx) return;
+
+    const last7Days = [];
+    const labels = [];
+    const today = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      labels.push(d.toLocaleDateString('en-IN', { weekday: 'short' }));
+      last7Days.push(d.toDateString());
+    }
+
+    const spending = last7Days.map(day => {
+      return transactions
+        .filter(t => t.type === 'debit' && new Date(t.created_at).toDateString() === day)
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    });
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: spending,
+          backgroundColor: color + '99',
+          borderRadius: 6,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#9090A8', font: { size: 11 } }
+          },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: {
+              color: '#9090A8',
+              font: { size: 11 },
+              callback: v => '₹' + v
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function formatRuleType(type) {
+    const types = {
+      'min_balance': 'Minimum Balance',
+      'alert_percentage': 'Alert Percentage',
+      'require_reason': 'Require Reason'
+    };
+    return types[type] || type;
+  }
+
+  function formatRuleThreshold(rule) {
+    if (rule.threshold_amount) return `Minimum: ${formatCurrency(rule.threshold_amount)}`;
+    if (rule.threshold_percentage) return `Alert at: ${rule.threshold_percentage}% remaining`;
+    return 'Active';
+  }
+
+  async function deleteRule(ruleId) {
+    if (!confirm('Remove this rule?')) return;
+    try {
+      await apiCall(`/vault-rules/${ruleId}`, 'DELETE');
+      loadVaultDetail();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function confirmDelete(vault) {
+    if (!confirm(`Delete "${vault.name}" vault? This cannot be undone.`)) return;
+    try {
+      await apiCall(`/vaults/${vault.id}`, 'DELETE');
+      window.location.href = 'vault.html';
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  function showCreateVaultModal() {
+    const colors = ['#FF6B6B','#FF9F43','#FECA57','#48DBFB','#FF9FF3','#54A0FF','#5F27CD','#2DD4A0','#7B6EF6'];
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'create-modal';
+    overlay.innerHTML = `
+      <div class="modal">
+        <p class="modal-title">Create New Vault</p>
+        <div id="modal-alert"></div>
+        <div class="form-group">
+          <label class="form-label">Vault Name</label>
+          <input type="text" id="vault-name" placeholder="e.g. Food, Rent, Travel" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description (optional)</label>
+          <input type="text" id="vault-desc" placeholder="e.g. restaurants, groceries" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <div class="color-picker-row">
+            ${colors.map(c => `
+              <div class="color-swatch ${c === '#7B6EF6' ? 'selected' : ''}"
+                style="background:${c};"
+                onclick="selectColor('${c}', this)"
+                data-color="${c}">
+              </div>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
+          <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn-primary" onclick="createVault()">Create</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  let selectedColor = '#7B6EF6';
+
+  function selectColor(color, el) {
+    selectedColor = color;
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('create-modal');
+    const ruleModal = document.getElementById('rule-modal');
+    if (modal) modal.remove();
+    if (ruleModal) ruleModal.remove();
+  }
+
+  async function createVault() {
+    const name = document.getElementById('vault-name').value.trim();
+    const desc = document.getElementById('vault-desc').value.trim();
+
+    if (!name) {
+      showAlert('modal-alert', 'Vault name is required');
+      return;
+    }
+
+    const bankAccounts = await loadBankAccounts();
+    if (!bankAccounts.length) {
+      showAlert('modal-alert', 'No bank account found');
+      return;
+    }
+
+    try {
+      await apiCall('/vaults', 'POST', {
+        name,
+        description: desc || null,
+        color: selectedColor,
+        bank_account_id: bankAccounts[0].id
+      });
+      closeModal();
+      loadVaultDetail();
+    } catch (err) {
+      showAlert('modal-alert', err.message);
+    }
+  }
+
+  function showAddRuleModal(vaultId) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'rule-modal';
+    overlay.innerHTML = `
+      <div class="modal">
+        <p class="modal-title">Add Vault Rule</p>
+        <div id="rule-alert"></div>
+        <div class="form-group">
+          <label class="form-label">Rule Type</label>
+          <select id="rule-type" onchange="updateRuleFields()">
+            <option value="alert_percentage">Alert when balance drops below %</option>
+            <option value="min_balance">Minimum balance threshold</option>
+            <option value="require_reason">Require reason for overspending</option>
+          </select>
+        </div>
+        <div id="rule-fields">
+          <div class="form-group">
+            <label class="form-label">Alert Percentage (%)</label>
+            <input type="number" id="rule-percentage" placeholder="e.g. 20" min="1" max="100" />
+            <p class="form-hint">Alert when vault drops below this % of allocated amount</p>
+          </div>
+        </div>
+        <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
+          <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn-primary" onclick="addRule('${vaultId}')">Add Rule</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  function updateRuleFields() {
+    const type = document.getElementById('rule-type').value;
+    const fields = document.getElementById('rule-fields');
+    if (type === 'alert_percentage') {
+      fields.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Alert Percentage (%)</label>
+          <input type="number" id="rule-percentage" placeholder="e.g. 20" min="1" max="100" />
+          <p class="form-hint">Alert when vault drops below this % of allocated amount</p>
+        </div>`;
+    } else if (type === 'min_balance') {
+      fields.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Minimum Balance (₹)</label>
+          <input type="number" id="rule-amount" placeholder="e.g. 1000" min="0" />
+          <p class="form-hint">Alert when vault balance drops below this amount</p>
+        </div>`;
+    } else {
+      fields.innerHTML = `
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">
+          Every overspend from this vault will require you to enter a reason.
+        </p>`;
+    }
+  }
+
+  async function addRule(vaultId) {
+    const type = document.getElementById('rule-type').value;
+    const body = { vault_id: vaultId, rule_type: type };
+
+    if (type === 'alert_percentage') {
+      const pct = document.getElementById('rule-percentage')?.value;
+      if (!pct) { showAlert('rule-alert', 'Please enter a percentage'); return; }
+      body.threshold_percentage = parseFloat(pct);
+    } else if (type === 'min_balance') {
+      const amt = document.getElementById('rule-amount')?.value;
+      if (!amt) { showAlert('rule-alert', 'Please enter an amount'); return; }
+      body.threshold_amount = parseFloat(amt);
+    }
+
+    try {
+      await apiCall('/vault-rules', 'POST', body);
+      closeModal();
+      loadVaultDetail();
+    } catch (err) {
+      showAlert('rule-alert', err.message);
+    }
+  }
+
+  loadVaultDetail();
+</script>
+</body>
+</html>

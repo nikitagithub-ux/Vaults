@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from backend.routes.auth import router as auth_router
 from backend.routes.bank_accounts import router as bank_router
 from backend.routes.vaults import router as vaults_router
@@ -30,7 +31,7 @@ app.include_router(allocation_router)
 app.include_router(transactions_router)
 app.include_router(dashboard_router)
 app.include_router(vault_rules_router)
-
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
 @app.get("/health")
 def health_check():

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0F0F13" />
+  <title>Vaults — Spend with intention</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="auth-wrapper">
+
+  <div class="auth-hero">
+    <div class="auth-logo">V</div>
+    <h1 class="auth-title">Vaults</h1>
+    <p class="auth-subtitle">Spend with intention</p>
+  </div>
+
+  <div class="auth-card">
+
+    <div class="tabs">
+      <button class="tab active" id="tab-login" onclick="switchTab('login')">Login</button>
+      <button class="tab" id="tab-register" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <div id="alert-container"></div>
+
+    <!-- Login Form -->
+    <div id="form-login">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="login-password" placeholder="Your password" />
+      </div>
+      <button class="btn-primary" onclick="handleLogin()">Login</button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="form-register" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="reg-name" placeholder="Nikit Shah" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="reg-password" placeholder="Min 8 characters" />
+      </div>
+      <button class="btn-primary" onclick="handleRegister()">Create Account</button>
+      <p class="auth-note">A simulated bank account will be created for you automatically.</p>
+    </div>
+
+  </div>
+
+</div>
+
+<style>
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+
+  .auth-wrapper {
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .auth-hero {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .auth-logo {
+    width: 64px;
+    height: 64px;
+    background: var(--accent);
+    border-radius: var(--radius-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 1rem;
+  }
+
+  .auth-title {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.25rem;
+  }
+
+  .auth-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+
+  .auth-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+  }
+
+  .auth-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 1rem;
+  }
+
+  .btn-primary {
+    margin-top: 0.5rem;
+  }
+</style>
+
+<script src="app.js"></script>
+<script>
+  redirectIfLoggedIn();
+
+  function switchTab(tab) {
+    const isLogin = tab === 'login';
+    document.getElementById('form-login').style.display = isLogin ? 'block' : 'none';
+    document.getElementById('form-register').style.display = isLogin ? 'none' : 'block';
+    document.getElementById('tab-login').classList.toggle('active', isLogin);
+    document.getElementById('tab-register').classList.toggle('active', !isLogin);
+    document.getElementById('alert-container').innerHTML = '';
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (!email || !password) {
+      showAlert('alert-container', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      const data = await apiCall('/auth/login', 'POST', { email, password });
+      saveTokens(data.access_token, data.refresh_token);
+      window.location.href = '/frontend/dashboard.html';
+    } catch (err) {
+      showAlert('alert-container', err.message);
+    }
+  }
+
+  async function handleRegister() {
+    const name = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+
+    if (!name || !email || !password) {
+      showAlert('alert-container', 'Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 8) {
+      showAlert('alert-container', 'Password must be at least 8 characters');
+      return;
+    }
+
+    try {
+      const data = await apiCall('/auth/register', 'POST', { name, email, password });
+      saveTokens(data.access_token, data.refresh_token);
+      saveUser(data.user);
+      window.location.href = '/frontend/dashboard.html';
+    } catch (err) {
+      showAlert('alert-container', err.message);
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const activeForm = document.getElementById('form-login').style.display !== 'none'
+        ? 'login' : 'register';
+      activeForm === 'login' ? handleLogin() : handleRegister();
+    }
+  });
+</script>
+
+</body>
+</html>

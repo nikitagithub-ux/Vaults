@@ -41,9 +41,6 @@ def make_payment(db: Session, user_id: str, vault_id: str, amount: Decimal,
     if vault.current_balance < amount:
         return None, f"Insufficient vault balance. '{vault.name}' has ₹{vault.current_balance} but payment is ₹{amount}"
 
-    # check bank has enough balance
-    if bank_account.balance < amount:
-        return None, "Insufficient bank balance"
 
     # detect vault violation
     is_violation = False
@@ -66,7 +63,6 @@ def make_payment(db: Session, user_id: str, vault_id: str, amount: Decimal,
 
     # deduct from vault and bank
     vault.current_balance -= amount
-    bank_account.balance -= amount
 
     # record main transaction
     transaction = Transaction(
@@ -89,7 +85,6 @@ def make_payment(db: Session, user_id: str, vault_id: str, amount: Decimal,
         penalty_vault = get_penalty_vault(db, user_id)
         if penalty_vault:
             penalty_vault.current_balance += penalty_amount
-            bank_account.balance -= penalty_amount
 
             # record penalty transaction
             penalty_transaction = Transaction(

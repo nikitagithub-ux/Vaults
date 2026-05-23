@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0F0F13" />
+  <title>Vaults — Transaction History</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <button class="btn-secondary btn-sm" onclick="window.location.href='dashboard.html'">← Back</button>
+  <span class="nav-brand">V<span>aults</span></span>
+  <div></div>
+</nav>
+
+<div class="page page-with-nav">
+
+  <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:1.25rem; letter-spacing:-0.02em;">Transaction History</h2>
+
+  <div class="tabs" style="margin-bottom:1.25rem;">
+    <button class="tab active" id="tab-all" onclick="switchFilter('all')">All</button>
+    <button class="tab" id="tab-debit" onclick="switchFilter('debit')">Payments</button>
+    <button class="tab" id="tab-credit" onclick="switchFilter('credit')">Credits</button>
+    <button class="tab" id="tab-violations" onclick="switchFilter('violations')">Violations</button>
+  </div>
+
+  <div id="transactions-container">
+    <div class="loading">
+      <div class="spinner"></div>
+      Loading...
+    </div>
+  </div>
+
+</div>
+
+<nav class="bottom-nav">
+  <button class="bottom-nav-item active" onclick="window.location.href='dashboard.html'">
+    <span class="bottom-nav-icon">🏠</span>
+    <span>Home</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='transactions.html'">
+    <span class="bottom-nav-icon">📋</span>
+    <span>History</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='payment.html'">
+    <span class="bottom-nav-icon">💸</span>
+    <span>Pay</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='vault.html'">
+    <span class="bottom-nav-icon">🏦</span>
+    <span>Vaults</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='profile.html'">
+    <span class="bottom-nav-icon">👤</span>
+    <span>Profile</span>
+  </button>
+</nav>
+
+<script src="app.js"></script>
+<script>
+  requireAuth();
+
+  let allTransactions = [];
+  let currentFilter = 'all';
+
+  async function loadTransactions() {
+    try {
+      allTransactions = await apiCall('/transactions');
+      renderTransactions();
+    } catch (err) {
+      document.getElementById('transactions-container').innerHTML =
+        `<div class="alert alert-danger">${err.message}</div>`;
+    }
+  }
+
+  function switchFilter(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(`tab-${filter}`).classList.add('active');
+    renderTransactions();
+  }
+
+  function renderTransactions() {
+    let filtered = allTransactions;
+
+    if (currentFilter === 'debit') {
+      filtered = allTransactions.filter(t => t.type === 'debit' && t.category !== 'penalty');
+    } else if (currentFilter === 'credit') {
+      filtered = allTransactions.filter(t => t.type === 'credit');
+    } else if (currentFilter === 'violations') {
+      filtered = allTransactions.filter(t => t.is_vault_violation);
+    }
+
+    const container = document.getElementById('transactions-container');
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <p class="empty-state-text">No transactions found</p>
+        </div>`;
+      return;
+    }
+
+    const grouped = groupByDate(filtered);
+
+    container.innerHTML = Object.entries(grouped).map(([date, txns]) => `
+      <p style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;
+        letter-spacing:0.08em; margin:1rem 0 0.5rem; font-weight:600;">${date}</p>
+      <div class="card" style="margin-bottom:0.75rem;">
+        ${txns.map(t => `
+          <div class="transaction-item">
+            <div class="transaction-icon">${getTransactionEmoji(t)}</div>
+            <div class="transaction-info">
+              <p class="transaction-name">${t.merchant_name || t.description || 'Transaction'}</p>
+              <p class="transaction-meta">
+                ${t.category || t.type} · ${formatTime(t.created_at)}
+                ${t.is_vault_violation ? ' · <span style="color:var(--warning);">⚠️ Violation</span>' : ''}
+              </p>
+              ${t.penalty_amount && parseFloat(t.penalty_amount) > 0 ?
+                `<p style="font-size:0.75rem; color:var(--danger); margin-top:2px;">
+                  Penalty: ${formatCurrency(t.penalty_amount)}</p>` : ''}
+            </div>
+            <p class="transaction-amount ${t.type}">
+              ${t.type === 'debit' ? '-' : '+'}${formatCurrency(t.amount)}
+            </p>
+          </div>`).join('')}
+      </div>`).join('');
+  }
+
+  function groupByDate(transactions) {
+    const groups = {};
+    transactions.forEach(t => {
+      const date = new Date(t.created_at);
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+
+      let label;
+      if (date.toDateString() === today.toDateString()) label = 'Today';
+      else if (date.toDateString() === yesterday.toDateString()) label = 'Yesterday';
+      else label = formatDate(t.created_at);
+
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(t);
+    });
+    return groups;
+  }
+
+  loadTransactions();
+</script>
+
+</body>
+</html>

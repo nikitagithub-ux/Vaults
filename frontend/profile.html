@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0F0F13" />
+  <title>Vaults — Profile</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <button class="btn-secondary btn-sm" onclick="window.location.href='dashboard.html'">← Back</button>
+  <span class="nav-brand">V<span>aults</span></span>
+  <div></div>
+</nav>
+
+<div class="page page-with-nav">
+
+  <div id="alert-container"></div>
+
+  <div id="main-content">
+    <div class="loading">
+      <div class="spinner"></div>
+      Loading...
+    </div>
+  </div>
+
+</div>
+
+<nav class="bottom-nav">
+  <button class="bottom-nav-item active" onclick="window.location.href='dashboard.html'">
+    <span class="bottom-nav-icon">🏠</span>
+    <span>Home</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='transactions.html'">
+    <span class="bottom-nav-icon">📋</span>
+    <span>History</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='payment.html'">
+    <span class="bottom-nav-icon">💸</span>
+    <span>Pay</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='vault.html'">
+    <span class="bottom-nav-icon">🏦</span>
+    <span>Vaults</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='profile.html'">
+    <span class="bottom-nav-icon">👤</span>
+    <span>Profile</span>
+  </button>
+</nav>
+
+<style>
+  .bank-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bank-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  .bank-card.primary::before {
+    background: var(--success);
+  }
+
+  .bank-name {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .bank-account-number {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+
+  .bank-balance {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--success);
+  }
+
+  .bank-balance-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+  }
+
+  .allocation-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .allocation-row:last-child {
+    border-bottom: none;
+  }
+
+  .allocation-vault-name {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .allocation-vault-balance {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .allocation-input {
+    width: 100px;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    text-align: right;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 200;
+    padding: 1rem;
+  }
+
+  .modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+  }
+
+  .user-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 1rem;
+  }
+</style>
+
+<script src="app.js"></script>
+<script>
+  requireAuth();
+
+  let bankAccounts = [];
+  let vaults = [];
+  const user = getUser();
+
+  async function loadProfile() {
+    try {
+      [bankAccounts, vaults] = await Promise.all([
+        apiCall('/bank-accounts'),
+        apiCall('/vaults')
+      ]);
+
+      const regularVaults = vaults.filter(v => v.name !== 'Penalty Pool');
+      const initials = user ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+
+      document.getElementById('main-content').innerHTML = `
+
+        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+          <div class="user-avatar">${initials}</div>
+          <div>
+            <h2 style="font-size:1.25rem; font-weight:800; letter-spacing:-0.02em;">${user?.name || 'User'}</h2>
+            <p style="font-size:0.85rem; color:var(--text-secondary);">${user?.email || ''}</p>
+          </div>
+        </div>
+
+        <p class="section-title">Bank Accounts</p>
+
+        ${bankAccounts.map(b => `
+          <div class="bank-card ${b.is_primary ? 'primary' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div>
+                <p class="bank-name">${b.bank_name}</p>
+                <p class="bank-account-number">•••• •••• ${b.account_number.slice(-4)}</p>
+              </div>
+              ${b.is_primary ? '<span class="badge badge-success">Primary</span>' : ''}
+            </div>
+            <p class="bank-balance">${formatCurrency(b.balance)}</p>
+            <p class="bank-balance-label">available balance</p>
+            <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+              <button class="btn-secondary btn-sm" onclick="showSeedModal('${b.id}', '${b.bank_name}')">
+                + Add Money
+              </button>
+              <button class="btn-secondary btn-sm" onclick="showAllocateModal('${b.id}')">
+                Allocate to Vaults
+              </button>
+            </div>
+          </div>`).join('')}
+
+        <button class="btn-secondary" style="margin-bottom:1.5rem;" onclick="showAddBankModal()">
+          + Add Bank Account
+        </button>
+
+        <p class="section-title">Danger Zone</p>
+        <div class="card">
+          <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">
+            Logging out will clear your session. Your data stays safe.
+          </p>
+          <button class="btn-danger" onclick="logout()">Logout</button>
+        </div>
+      `;
+
+    } catch (err) {
+      showAlert('alert-container', err.message);
+    }
+  }
+
+  function showSeedModal(bankId, bankName) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'seed-modal';
+    overlay.innerHTML = `
+      <div class="modal">
+        <p class="modal-title">Add Money to ${bankName}</p>
+        <div id="seed-alert"></div>
+        <div class="form-group">
+          <label class="form-label">Amount (₹)</label>
+          <input type="number" id="seed-amount" placeholder="e.g. 50000" min="1" />
+          <p class="form-hint">This simulates receiving your salary or any income.</p>
+        </div>
+        <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
+          <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn-primary" onclick="seedMoney('${bankId}')">Add Money</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  async function seedMoney(bankId) {
+    const amount = document.getElementById('seed-amount').value;
+    if (!amount || parseFloat(amount) <= 0) {
+      showAlert('seed-alert', 'Please enter a valid amount');
+      return;
+    }
+    try {
+      await apiCall('/bank-accounts/seed', 'POST', {
+        bank_account_id: bankId,
+        amount: parseFloat(amount)
+      });
+      closeModal();
+      showAlert('alert-container', 'Money added successfully!', 'success');
+      loadProfile();
+    } catch (err) {
+      showAlert('seed-alert', err.message);
+    }
+  }
+
+  function showAllocateModal(bankId) {
+    const regularVaults = vaults.filter(v => v.name !== 'Penalty Pool');
+
+    if (regularVaults.length === 0) {
+      showAlert('alert-container', 'Create some vaults first before allocating!');
+      return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'allocate-modal';
+    overlay.innerHTML = `
+      <div class="modal">
+        <p class="modal-title">Allocate to Vaults</p>
+        <div id="allocate-alert"></div>
+        <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem;">
+          Enter how much to send to each vault. Leave blank to skip.
+        </p>
+        ${regularVaults.map(v => `
+          <div class="allocation-row">
+            <div style="flex:1;">
+              <p class="allocation-vault-name">${v.name}</p>
+              <p class="allocation-vault-balance">Balance: ${formatCurrency(v.current_balance)}</p>
+            </div>
+            <input type="number" class="allocation-input" id="alloc-${v.id}"
+              placeholder="₹0" min="0" />
+          </div>`).join('')}
+        <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+          <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn-primary" onclick="allocateFunds('${bankId}')">Allocate</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  async function allocateFunds(bankId) {
+    const regularVaults = vaults.filter(v => v.name !== 'Penalty Pool');
+    const allocations = [];
+
+    regularVaults.forEach(v => {
+      const input = document.getElementById(`alloc-${v.id}`);
+      const amount = parseFloat(input?.value);
+      if (amount && amount > 0) {
+        allocations.push({ vault_id: v.id, amount });
+      }
+    });
+
+    if (allocations.length === 0) {
+      showAlert('allocate-alert', 'Please enter at least one allocation amount');
+      return;
+    }
+
+    try {
+      await apiCall('/allocate', 'POST', {
+        bank_account_id: bankId,
+        allocations
+      });
+      closeModal();
+      showAlert('alert-container', 'Funds allocated successfully!', 'success');
+      loadProfile();
+    } catch (err) {
+      showAlert('allocate-alert', err.message);
+    }
+  }
+
+  function showAddBankModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'bank-modal';
+    overlay.innerHTML = `
+      <div class="modal">
+        <p class="modal-title">Add Bank Account</p>
+        <div id="bank-alert"></div>
+        <div class="form-group">
+          <label class="form-label">Bank Name</label>
+          <input type="text" id="bank-name" placeholder="e.g. SBI, HDFC, ICICI" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Account Number</label>
+          <input type="text" id="bank-account-number" placeholder="Your account number" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">IFSC Code</label>
+          <input type="text" id="bank-ifsc" placeholder="e.g. SBIN0001234" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Account Holder Name</label>
+          <input type="text" id="bank-holder" placeholder="Full name as per bank" />
+        </div>
+        <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
+          <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn-primary" onclick="addBankAccount()">Add Account</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  async function addBankAccount() {
+    const bankName = document.getElementById('bank-name').value.trim();
+    const accountNumber = document.getElementById('bank-account-number').value.trim();
+    const ifsc = document.getElementById('bank-ifsc').value.trim();
+    const holder = document.getElementById('bank-holder').value.trim();
+
+    if (!bankName || !accountNumber || !ifsc || !holder) {
+      showAlert('bank-alert', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      await apiCall('/bank-accounts', 'POST', {
+        bank_name: bankName,
+        account_number: accountNumber,
+        ifsc_code: ifsc,
+        account_holder_name: holder,
+        is_primary: false
+      });
+      closeModal();
+      showAlert('alert-container', 'Bank account added!', 'success');
+      loadProfile();
+    } catch (err) {
+      showAlert('bank-alert', err.message);
+    }
+  }
+
+  function closeModal() {
+    ['seed-modal', 'allocate-modal', 'bank-modal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+  }
+
+  loadProfile();
+</script>
+
+</body>
+</html>

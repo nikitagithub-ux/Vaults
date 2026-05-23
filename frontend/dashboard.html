@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0F0F13" />
+  <title>Vaults — Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">V<span>aults</span></span>
+  <div class="nav-actions">
+    <span id="user-name" style="font-size:0.85rem; color:var(--text-secondary);"></span>
+    <button class="btn-secondary btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="page page-with-nav" id="main-content">
+  <div class="loading">
+    <div class="spinner"></div>
+    Loading...
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="bottom-nav-item active" onclick="window.location.href='dashboard.html'">
+    <span class="bottom-nav-icon">🏠</span>
+    <span>Home</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='transactions.html'">
+    <span class="bottom-nav-icon">📋</span>
+    <span>History</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='payment.html'">
+    <span class="bottom-nav-icon">💸</span>
+    <span>Pay</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='vault.html'">
+    <span class="bottom-nav-icon">🏦</span>
+    <span>Vaults</span>
+  </button>
+  <button class="bottom-nav-item" onclick="window.location.href='profile.html'">
+    <span class="bottom-nav-icon">👤</span>
+    <span>Profile</span>
+  </button>
+</nav>
+
+<button class="fab" onclick="window.location.href='payment.html'" title="Make a payment">+</button>
+
+<style>
+  .donut-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .donut-wrapper canvas {
+    max-width: 140px;
+    max-height: 140px;
+  }
+
+  .donut-legend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-name {
+    flex: 1;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .legend-value {
+    font-weight: 600;
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+  }
+
+  .alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .alert-item:last-child {
+    border-bottom: none;
+  }
+
+  .alert-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .alert-message {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  .alert-vault {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+  }
+</style>
+
+<script src="app.js"></script>
+<script>
+  requireAuth();
+
+  const user = getUser();
+  if (user) {
+    document.getElementById('user-name').textContent = user.name;
+  }
+
+  async function loadDashboard() {
+    try {
+      const data = await apiCall('/dashboard');
+      if (!data) return;
+
+      const vaults = data.vaults.filter(v => v.name !== 'Penalty Pool');
+      const penaltyVault = data.vaults.find(v => v.name === 'Penalty Pool');
+
+      document.getElementById('main-content').innerHTML = `
+
+        ${data.alerts.length > 0 ? `
+        <div class="card" style="margin-bottom:1rem; border-color: rgba(245,166,35,0.3);">
+          <p class="section-title" style="color:var(--warning);">⚠️ Alerts</p>
+          ${data.alerts.map(a => `
+            <div class="alert-item">
+              <span class="alert-icon">🔔</span>
+              <div>
+                <p class="alert-vault">${a.vault_name}</p>
+                <p class="alert-message">${a.message}</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>` : ''}
+
+        <div class="stat-grid" style="margin-bottom:1rem;">
+          <div class="stat-card">
+            <p class="stat-label">Bank Balance</p>
+            <p class="stat-value">${formatCurrency(data.total_bank_balance)}</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">In Vaults</p>
+            <p class="stat-value">${formatCurrency(data.total_vault_balance)}</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Spent This Month</p>
+            <p class="stat-value" style="color:var(--danger);">${formatCurrency(data.total_spent_this_month)}</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Penalty Pool</p>
+            <p class="stat-value" style="color:var(--warning);">${formatCurrency(data.penalty_pool_balance)}</p>
+          </div>
+        </div>
+
+        ${vaults.length > 0 ? `
+        <div class="card" style="margin-bottom:1rem;">
+          <p class="section-title">Vault Breakdown</p>
+          <div class="donut-wrapper">
+            <canvas id="donutChart"></canvas>
+            <div class="donut-legend" id="donut-legend"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+          <p class="section-title">Monthly Spending</p>
+          <div class="chart-container" style="height:200px;">
+            <canvas id="barChart"></canvas>
+          </div>
+        </div>` : ''}
+
+        <p class="section-title">Your Vaults</p>
+        ${vaults.length === 0 ? `
+          <div class="empty-state">
+            <div class="empty-state-icon">🏦</div>
+            <p class="empty-state-text">No vaults yet. Create your first vault!</p>
+            <button class="btn-primary btn-sm" style="margin-top:1rem; width:auto; padding: 0.5rem 1.5rem;"
+              onclick="window.location.href='vault.html'">Create Vault</button>
+          </div>` : `
+          <div class="vault-grid" style="margin-bottom:1rem;">
+            ${vaults.map(v => {
+              const pct = getBalancePercentage(v.current_balance, v.allocated_amount);
+              const color = v.color || '#7B6EF6';
+              return `
+                <div class="vault-card" style="--vault-color:${color};"
+                  onclick="window.location.href='vault.html?id=${v.id}'">
+                  <p class="vault-card-name">${v.name}</p>
+                  <p class="vault-card-balance">${formatCurrency(v.current_balance)}</p>
+                  <p class="vault-card-meta">${pct}% remaining</p>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width:${pct}%; background:${color};"></div>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>`}
+
+        <p class="section-title">Recent Transactions</p>
+        <div class="card">
+          ${data.recent_transactions.length === 0 ? `
+            <div class="empty-state" style="padding:1.5rem;">
+              <p class="empty-state-text">No transactions yet</p>
+            </div>` :
+            data.recent_transactions
+              .filter(t => t.category !== 'allocation')
+              .slice(0, 8)
+              .map(t => `
+                <div class="transaction-item">
+                  <div class="transaction-icon">${getTransactionEmoji(t)}</div>
+                  <div class="transaction-info">
+                    <p class="transaction-name">${t.merchant_name || t.description || 'Transaction'}</p>
+                    <p class="transaction-meta">${t.category || t.type} · ${formatDate(t.created_at)}</p>
+                    ${t.is_vault_violation ? `<span class="badge badge-warning" style="margin-top:4px;">⚠️ Violation</span>` : ''}
+                  </div>
+                  <p class="transaction-amount ${t.type}">${t.type === 'debit' ? '-' : '+'}${formatCurrency(t.amount)}</p>
+                </div>`).join('')}
+        </div>
+      `;
+
+      if (vaults.length > 0) {
+        renderCharts(vaults, data.recent_transactions);
+      }
+
+    } catch (err) {
+      document.getElementById('main-content').innerHTML = `
+        <div class="alert alert-danger">Failed to load dashboard: ${err.message}</div>`;
+    }
+  }
+
+  function renderCharts(vaults, transactions) {
+    const colors = vaults.map(v => v.color || '#7B6EF6');
+    const labels = vaults.map(v => v.name);
+    const balances = vaults.map(v => parseFloat(v.current_balance));
+
+    // donut chart
+    const donutCtx = document.getElementById('donutChart');
+    if (donutCtx) {
+      new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data: balances,
+            backgroundColor: colors,
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          cutout: '70%',
+          plugins: { legend: { display: false } },
+          responsive: true,
+          maintainAspectRatio: true
+        }
+      });
+
+      const legend = document.getElementById('donut-legend');
+      if (legend) {
+        legend.innerHTML = vaults.map((v, i) => `
+          <div class="legend-item">
+            <div class="legend-dot" style="background:${colors[i]};"></div>
+            <span class="legend-name">${v.name}</span>
+            <span class="legend-value">${formatCurrency(v.current_balance)}</span>
+          </div>`).join('');
+      }
+    }
+
+    // bar chart — spending per vault this month
+    const spendingMap = {};
+    vaults.forEach(v => spendingMap[v.id] = 0);
+
+    transactions.forEach(t => {
+      if (t.type === 'debit' && t.category !== 'penalty' && spendingMap[t.vault_id] !== undefined) {
+        spendingMap[t.vault_id] += parseFloat(t.amount);
+      }
+    });
+
+    const barCtx = document.getElementById('barChart');
+    if (barCtx) {
+      new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Spent',
+            data: vaults.map(v => spendingMap[v.id] || 0),
+            backgroundColor: colors,
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#9090A8', font: { size: 11 } }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: {
+                color: '#9090A8',
+                font: { size: 11 },
+                callback: v => '₹' + v.toLocaleString('en-IN')
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  loadDashboard();
+</script>
+
+</body>
+</html>
