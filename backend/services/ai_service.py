@@ -5,7 +5,14 @@ client = Groq(api_key=settings.GROQ_API_KEY)
 
 def categorize_merchant(merchant_name: str, upi_id: str, vaults: list) -> dict:
     if not merchant_name and not upi_id:
-        return {"suggested_vaults": [], "category": None, "reason": None}
+        return {
+            "suggested_vaults": [],
+            "category": None,
+            "reason": None,
+            "confidence": "low",
+            "suggestion": None,
+            "is_violation": False
+        }
 
     vault_list = "\n".join([
         f"- {v.name} (description: {v.description or 'no description'})"
@@ -27,19 +34,29 @@ Payment details:
 Available vaults:
 {vault_list}
 
-Based on the merchant details, suggest the most appropriate vault(s) for this payment.
-If multiple vaults could work, list up to 3 ranked by relevance.
-Also suggest a category for this payment.
+Instructions:
+- Look at the merchant and decide what TYPE of purchase this is
+- Then check if any vault ACTUALLY matches that purchase type
+- If no vault matches, say NONE and explain what type of vault would be appropriate
+- Only suggest a vault if it genuinely matches — don't force a match
+- Mark confidence LOW if the merchant name is ambiguous or unclear
+
+Examples:
+- "Dominos Pizza" with Food vault → suggest Food, HIGH confidence
+- "Croma Electronics" with only Food/Medical vaults → NONE, LOW confidence, suggest creating Electronics vault
+- "apollo@hdfc" with Medical vault → suggest Medical, HIGH confidence
+- "apple@icici" → LOW confidence, ambiguous
 
 Reply in this exact format:
-VAULTS: <vault name 1>, <vault name 2>, <vault name 3> (or NONE if no match)
-CATEGORY: <single category word like food/rent/shopping/medical/travel/entertainment>
-REASON: <one short sentence explaining why>
-IS_VIOLATION: <YES or NO — yes if the payment clearly doesn't belong in any available vault>"""
+VAULTS: <vault name 1>, <vault name 2> (or NONE if no vault matches)
+CATEGORY: <single category word>
+REASON: <one short sentence>
+CONFIDENCE: <HIGH or LOW>
+SUGGESTION: <if NONE, suggest what type of vault to create, otherwise leave blank>"""
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200,
             temperature=0.1
@@ -55,6 +72,8 @@ IS_VIOLATION: <YES or NO — yes if the payment clearly doesn't belong in any av
             "suggested_vaults": [],
             "category": None,
             "reason": None,
+            "confidence": "high",
+            "suggestion": None,
             "is_violation": False
         }
 
@@ -78,12 +97,28 @@ IS_VIOLATION: <YES or NO — yes if the payment clearly doesn't belong in any av
             elif line.startswith("REASON:"):
                 result["reason"] = line.replace("REASON:", "").strip()
 
+            elif line.startswith("CONFIDENCE:"):
+                val = line.replace("CONFIDENCE:", "").strip().upper()
+                result["confidence"] = val
+
             elif line.startswith("IS_VIOLATION:"):
                 val = line.replace("IS_VIOLATION:", "").strip().upper()
                 result["is_violation"] = val == "YES"
+
+            elif line.startswith("SUGGESTION:"):
+                val = line.replace("SUGGESTION:", "").strip()
+                if val:
+                    result["suggestion"] = val
 
         return result
 
     except Exception as e:
         print(f"AI categorization error: {e}")
-        return {"suggested_vaults": [], "category": None, "reason": None, "is_violation": False}
+        return {
+            "suggested_vaults": [],
+            "category": None,
+            "reason": None,
+            "confidence": "low",
+            "suggestion": None,
+            "is_violation": False
+        }

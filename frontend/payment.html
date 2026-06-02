@@ -22,16 +22,13 @@
 
   <div id="alert-container"></div>
 
-  <!-- Step 1 — Merchant Info -->
   <div class="card" style="margin-bottom:1rem; padding:1.25rem;">
     <p class="section-title" style="margin-bottom:0.75rem;">Step 1 — Who are you paying?</p>
-
     <div class="form-group">
       <label class="form-label">Merchant Name</label>
       <input type="text" id="merchant-name" placeholder="e.g. Dominos Pizza"
         oninput="onMerchantInput()" />
     </div>
-
     <div class="form-group" style="margin-bottom:0;">
       <label class="form-label">UPI ID (optional)</label>
       <input type="text" id="upi-id" placeholder="e.g. dominos@icici"
@@ -39,7 +36,6 @@
     </div>
   </div>
 
-  <!-- AI Suggestion -->
   <div id="ai-suggestion" style="display:none; margin-bottom:1rem;">
     <div class="card" style="border-color: rgba(123,110,246,0.3); padding:1rem;">
       <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
@@ -54,17 +50,14 @@
     </div>
   </div>
 
-  <!-- Step 2 — Vault Selection -->
   <div class="card" style="margin-bottom:1rem; padding:1.25rem;">
     <p class="section-title" style="margin-bottom:0.75rem;">Step 2 — Which vault?</p>
-
     <div class="form-group" style="margin-bottom:0.75rem;">
       <label class="form-label">Pay From Vault</label>
       <select id="vault-select" onchange="onVaultChange()">
         <option value="">Select a vault...</option>
       </select>
     </div>
-
     <div id="vault-balance-info" style="display:none;">
       <div class="stat-card">
         <p class="stat-label">Available Balance</p>
@@ -73,7 +66,6 @@
     </div>
   </div>
 
-  <!-- Violation Warning -->
   <div id="override-section" style="display:none; margin-bottom:1rem;">
     <div class="violation-banner">
       <p class="violation-title">⚠️ Possible Vault Mismatch</p>
@@ -85,21 +77,17 @@
     </div>
   </div>
 
-  <!-- Step 3 — Payment Details -->
   <div class="card" style="margin-bottom:1rem; padding:1.25rem;">
     <p class="section-title" style="margin-bottom:0.75rem;">Step 3 — Payment Details</p>
-
     <div class="form-group">
       <label class="form-label">Amount (₹)</label>
       <input type="number" id="amount" placeholder="0.00" min="1" step="0.01" />
     </div>
-
     <div class="form-group">
       <label class="form-label">Category (optional)</label>
       <input type="text" id="category" placeholder="e.g. food, rent, shopping" />
       <p class="form-hint">AI will auto-fill this based on merchant</p>
     </div>
-
     <div class="form-group" style="margin-bottom:0;">
       <label class="form-label">Description (optional)</label>
       <input type="text" id="description" placeholder="What's this payment for?" />
@@ -204,6 +192,27 @@
       aiLoading.style.display = 'none';
       aiReason.textContent = result.reason || 'Based on merchant details';
 
+      // low confidence — ambiguous merchant
+      if (result.confidence === 'LOW') {
+        aiReason.textContent = '⚠️ ' + (result.reason || 'Merchant is ambiguous — please select vault manually.');
+        aiSuggestions.innerHTML = `
+          <p style="font-size:0.8rem; color:var(--warning); margin-bottom:0.5rem;">
+            AI isn't confident about this merchant. All your vaults are shown below — pick the right one.
+          </p>
+          ${vaults.filter(v => v.name !== 'Penalty Pool' && !v.is_locked).map(v => `
+            <button class="btn-secondary"
+              style="text-align:left; padding:0.75rem 1rem; margin-bottom:0.5rem;"
+              onclick="selectSuggestedVault('${v.id}', '${result.category || ''}')">
+              <span style="font-weight:600;">${v.name}</span>
+              <br/>
+              <span style="color:var(--text-secondary); font-size:0.8rem;">
+                ${formatCurrency(v.current_balance)} available
+              </span>
+            </button>`).join('')}
+        `;
+        return;
+      }
+
       if (result.category) {
         document.getElementById('category').value = result.category;
       }
@@ -242,10 +251,38 @@
           </button>
         `;
       } else {
+        // no matching vault found
+        const suggestion = result.suggestion ? `
+          <div style="margin-top:0.75rem; padding:0.75rem;
+            background:rgba(123,110,246,0.1); border-radius:8px;
+            border: 1px solid rgba(123,110,246,0.3);">
+            <p style="font-size:0.8rem; color:var(--accent); font-weight:600; margin-bottom:0.25rem;">
+              💡 Suggestion
+            </p>
+            <p style="font-size:0.8rem; color:var(--text-secondary);">${result.suggestion}</p>
+            <button class="btn-secondary btn-sm" style="margin-top:0.5rem;"
+              onclick="window.location.href='vault.html'">
+              Create a new vault
+            </button>
+          </div>` : '';
+
         aiSuggestions.innerHTML = `
-          <p style="font-size:0.8rem; color:var(--text-secondary);">
-            No matching vault found. Please select one manually.
-          </p>`;
+          <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+            No matching vault found. You can still pick one manually — 
+            no penalty since no suitable vault exists.
+          </p>
+          ${suggestion}
+          ${vaults.filter(v => v.name !== 'Penalty Pool' && !v.is_locked).map(v => `
+            <button class="btn-secondary"
+              style="text-align:left; padding:0.75rem 1rem; margin-bottom:0.5rem;"
+              onclick="selectSuggestedVaultNoViolation('${v.id}')">
+              <span style="font-weight:600;">${v.name}</span>
+              <br/>
+              <span style="color:var(--text-secondary); font-size:0.8rem;">
+                ${formatCurrency(v.current_balance)} available
+              </span>
+            </button>`).join('')}
+        `;
       }
 
       // AI based violation detection
@@ -279,6 +316,12 @@
     if (category) {
       document.getElementById('category').value = category;
     }
+    document.getElementById('override-section').style.display = 'none';
+  }
+
+  function selectSuggestedVaultNoViolation(vaultId) {
+    document.getElementById('vault-select').value = vaultId;
+    onVaultChange();
     document.getElementById('override-section').style.display = 'none';
   }
 
