@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0F0F13" />
+  <title>Vaults — Welcome</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div style="max-width:480px; margin:0 auto; padding:1.5rem 1rem; min-height:100vh; display:flex; flex-direction:column;">
+
+  <!-- Progress Bar -->
+  <div style="margin-bottom:2rem;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+      <span style="font-size:0.75rem; color:var(--text-muted);" id="step-label">Step 1 of 4</span>
+      <span style="font-size:0.75rem; color:var(--accent); cursor:pointer;" onclick="skipOnboarding()">Skip for now</span>
+    </div>
+    <div style="height:4px; background:var(--border); border-radius:100px;">
+      <div id="progress-fill" style="height:100%; border-radius:100px; background:var(--accent); width:25%; transition: width 0.4s ease;"></div>
+    </div>
+  </div>
+
+  <!-- Steps Container -->
+  <div style="flex:1;">
+
+    <!-- Step 1 — Welcome -->
+    <div id="step-1">
+      <div style="text-align:center; padding:2rem 0 1.5rem;">
+        <div style="font-size:4rem; margin-bottom:1rem;">💰</div>
+        <h1 style="font-size:2rem; font-weight:800; letter-spacing:-0.03em; margin-bottom:0.75rem;">
+          Welcome to <span style="color:var(--accent);">Vaults</span>
+        </h1>
+        <p style="color:var(--text-secondary); font-size:0.95rem; line-height:1.7; max-width:320px; margin:0 auto;">
+          Stop wondering where your money went. Divide it into vaults before you spend it.
+        </p>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.75rem; margin:1.5rem 0;">
+        <div class="card" style="display:flex; align-items:center; gap:1rem; padding:1rem;">
+          <span style="font-size:1.5rem;">🏦</span>
+          <div>
+            <p style="font-weight:600; font-size:0.9rem;">Create Vaults</p>
+            <p style="font-size:0.8rem; color:var(--text-secondary);">Divide your money into spending categories</p>
+          </div>
+        </div>
+        <div class="card" style="display:flex; align-items:center; gap:1rem; padding:1rem;">
+          <span style="font-size:1.5rem;">🤖</span>
+          <div>
+            <p style="font-weight:600; font-size:0.9rem;">AI Powered</p>
+            <p style="font-size:0.8rem; color:var(--text-secondary);">Auto-detects which vault to pay from</p>
+          </div>
+        </div>
+        <div class="card" style="display:flex; align-items:center; gap:1rem; padding:1rem;">
+          <span style="font-size:1.5rem;">⚠️</span>
+          <div>
+            <p style="font-weight:600; font-size:0.9rem;">Penalty System</p>
+            <p style="font-size:0.8rem; color:var(--text-secondary);">1.5% penalty for paying from wrong vault</p>
+          </div>
+        </div>
+        <div class="card" style="display:flex; align-items:center; gap:1rem; padding:1rem;">
+          <span style="font-size:1.5rem;">🔔</span>
+          <div>
+            <p style="font-weight:600; font-size:0.9rem;">Smart Alerts</p>
+            <p style="font-size:0.8rem; color:var(--text-secondary);">Get notified when vaults are running low</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="nextStep()">Let's get started →</button>
+    </div>
+
+    <!-- Step 2 — Add Bank -->
+    <div id="step-2" style="display:none;">
+      <div style="text-align:center; padding:1.5rem 0 1.5rem;">
+        <div style="font-size:3.5rem; margin-bottom:1rem;">🏛️</div>
+        <h2 style="font-size:1.75rem; font-weight:800; letter-spacing:-0.02em; margin-bottom:0.5rem;">Add your bank</h2>
+        <p style="color:var(--text-secondary); font-size:0.875rem;">
+          Your bank details stay on your device. We never connect to real banks.
+        </p>
+      </div>
+
+      <div id="bank-alert"></div>
+
+      <div class="form-group">
+        <label class="form-label">Bank Name</label>
+        <input type="text" id="bank-name" placeholder="e.g. SBI, HDFC, ICICI" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Number</label>
+        <input type="text" id="bank-account-number" placeholder="Your account number" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">IFSC Code</label>
+        <input type="text" id="bank-ifsc" placeholder="e.g. SBIN0001234" />
+        <p class="form-hint">Found on your cheque book or bank passbook</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Holder Name</label>
+        <input type="text" id="bank-holder" placeholder="Full name as per bank" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Current Balance (₹)</label>
+        <input type="number" id="bank-balance" placeholder="How much is in your account right now?" min="0" />
+        <p class="form-hint">This is just for tracking — enter your real balance</p>
+      </div>
+
+      <button class="btn-primary" onclick="handleAddBank()">Add Bank →</button>
+    </div>
+
+    <!-- Step 3 — Create First Vault -->
+    <div id="step-3" style="display:none;">
+      <div style="text-align:center; padding:1.5rem 0 1.5rem;">
+        <div style="font-size:3.5rem; margin-bottom:1rem;">🗂️</div>
+        <h2 style="font-size:1.75rem; font-weight:800; letter-spacing:-0.02em; margin-bottom:0.5rem;">Create your first vault</h2>
+        <p style="color:var(--text-secondary); font-size:0.875rem;">
+          Vaults are spending buckets. Start with one — you can add more later.
+        </p>
+      </div>
+
+      <div id="vault-alert"></div>
+
+      <div class="form-group">
+        <label class="form-label">Vault Name</label>
+        <input type="text" id="vault-name" placeholder="e.g. Food, Rent, Shopping" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description (optional)</label>
+        <input type="text" id="vault-desc" placeholder="e.g. restaurants, groceries, eating out" />
+        <p class="form-hint">Helps AI suggest the right vault when you pay</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color</label>
+        <div class="color-picker-row" id="color-picker">
+          <div class="color-swatch selected" style="background:#FF6B6B;" onclick="selectColor('#FF6B6B', this)" data-color="#FF6B6B"></div>
+          <div class="color-swatch" style="background:#FF9F43;" onclick="selectColor('#FF9F43', this)" data-color="#FF9F43"></div>
+          <div class="color-swatch" style="background:#FECA57;" onclick="selectColor('#FECA57', this)" data-color="#FECA57"></div>
+          <div class="color-swatch" style="background:#48DBFB;" onclick="selectColor('#48DBFB', this)" data-color="#48DBFB"></div>
+          <div class="color-swatch" style="background:#FF9FF3;" onclick="selectColor('#FF9FF3', this)" data-color="#FF9FF3"></div>
+          <div class="color-swatch" style="background:#54A0FF;" onclick="selectColor('#54A0FF', this)" data-color="#54A0FF"></div>
+          <div class="color-swatch" style="background:#5F27CD;" onclick="selectColor('#5F27CD', this)" data-color="#5F27CD"></div>
+          <div class="color-swatch" style="background:#2DD4A0;" onclick="selectColor('#2DD4A0', this)" data-color="#2DD4A0"></div>
+          <div class="color-swatch" style="background:#7B6EF6;" onclick="selectColor('#7B6EF6', this)" data-color="#7B6EF6"></div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:0.75rem;">
+        <button class="btn-secondary" onclick="skipVault()">Skip for now</button>
+        <button class="btn-primary" onclick="handleCreateVault()">Create Vault →</button>
+      </div>
+    </div>
+
+    <!-- Step 4 — All Done -->
+    <div id="step-4" style="display:none;">
+      <div style="text-align:center; padding:2rem 0;">
+        <div style="font-size:4rem; margin-bottom:1rem;">🎉</div>
+        <h2 style="font-size:1.75rem; font-weight:800; letter-spacing:-0.02em; margin-bottom:0.75rem;">
+          You're all set!
+        </h2>
+        <p style="color:var(--text-secondary); font-size:0.95rem; line-height:1.7; max-width:300px; margin:0 auto 2rem;">
+          Your bank is connected and your first vault is ready. Start spending with intention.
+        </p>
+
+        <div class="card" style="text-align:left; margin-bottom:1rem;">
+          <p class="section-title">What to do next</p>
+          <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <span style="font-size:1.2rem;">💸</span>
+              <p style="font-size:0.875rem; color:var(--text-secondary);">Allocate money from your bank to vaults</p>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <span style="font-size:1.2rem;">🛍️</span>
+              <p style="font-size:0.875rem; color:var(--text-secondary);">Make a payment and let AI pick the vault</p>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <span style="font-size:1.2rem;">🔔</span>
+              <p style="font-size:0.875rem; color:var(--text-secondary);">Set alerts so you know when you're overspending</p>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="window.location.href='dashboard.html'">
+          Go to Dashboard →
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .step {
+    animation: fadeSlideIn 0.35s ease;
+  }
+
+  @keyframes fadeSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+</style>
+
+<script src="app.js"></script>
+<script>
+  requireAuth();
+
+  async function checkIfOnboardingNeeded() {
+    try {
+      const banks = await apiCall('/bank-accounts');
+      console.log('Banks found:', banks);
+      if (banks && banks.length > 0) {
+        console.log('Redirecting to dashboard');
+        window.location.href = 'dashboard.html';
+      } else {
+        console.log('Staying on onboarding');
+      }
+    } catch (err) {
+      console.log('Error checking banks:', err);
+    }
+  }
+
+  checkIfOnboardingNeeded();
+
+  let currentStep = 1;
+  let selectedColor = '#FF6B6B';
+  let createdBankId = null;
+
+  const progressWidths = ['25%', '50%', '75%', '100%'];
+
+  function nextStep() {
+    currentStep++;
+    showStep(currentStep);
+  }
+
+  function showStep(step) {
+    for (let i = 1; i <= 4; i++) {
+      const el = document.getElementById('step-' + i);
+      if (el) el.style.display = 'none';
+    }
+    const current = document.getElementById('step-' + step);
+    if (current) current.style.display = 'block';
+    document.getElementById('step-label').textContent = 'Step ' + step + ' of 4';
+    document.getElementById('progress-fill').style.width = progressWidths[step - 1];
+  }
+
+  function skipOnboarding() {
+    window.location.href = 'dashboard.html';
+  }
+
+  function skipVault() {
+    nextStep();
+  }
+
+  function selectColor(color, el) {
+    selectedColor = color;
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  async function handleAddBank() {
+    const bankName = document.getElementById('bank-name').value.trim();
+    const accountNumber = document.getElementById('bank-account-number').value.trim();
+    const ifsc = document.getElementById('bank-ifsc').value.trim().toUpperCase();
+    const holder = document.getElementById('bank-holder').value.trim();
+    const balance = document.getElementById('bank-balance').value;
+
+    if (!bankName || !accountNumber || !ifsc || !holder) {
+      showAlert('bank-alert', 'Please fill in all required fields');
+      return;
+    }
+
+    if (!balance || parseFloat(balance) < 0) {
+      showAlert('bank-alert', 'Please enter your current bank balance');
+      return;
+    }
+
+    try {
+      const bank = await apiCall('/bank-accounts', 'POST', {
+        bank_name: bankName,
+        account_number: accountNumber,
+        ifsc_code: ifsc,
+        account_holder_name: holder,
+        is_primary: true
+      });
+
+      createdBankId = bank.id;
+
+      if (parseFloat(balance) > 0) {
+        await apiCall('/bank-accounts/seed', 'POST', {
+          bank_account_id: bank.id,
+          amount: parseFloat(balance)
+        });
+      }
+
+      // create penalty pool vault
+      await apiCall('/vaults', 'POST', {
+        name: 'Penalty Pool',
+        description: 'Auto-created. Holds penalty charges for vault violations.',
+        color: '#FF0000',
+        bank_account_id: bank.id
+      });
+
+      // lock penalty pool
+      const vaults = await apiCall('/vaults');
+      const penaltyVault = vaults.find(v => v.name === 'Penalty Pool');
+      if (penaltyVault) {
+        await apiCall('/vaults/' + penaltyVault.id, 'PUT', { is_locked: true });
+      }
+
+      nextStep();
+    } catch (err) {
+      showAlert('bank-alert', err.message);
+    }
+  }
+
+  async function handleCreateVault() {
+    const name = document.getElementById('vault-name').value.trim();
+    const desc = document.getElementById('vault-desc').value.trim();
+
+    if (!name) {
+      showAlert('vault-alert', 'Please enter a vault name');
+      return;
+    }
+
+    if (!createdBankId) {
+      showAlert('vault-alert', 'No bank account found. Please go back and add a bank.');
+      return;
+    }
+
+    try {
+      await apiCall('/vaults', 'POST', {
+        name,
+        description: desc || null,
+        color: selectedColor,
+        bank_account_id: createdBankId
+      });
+
+      nextStep();
+    } catch (err) {
+      showAlert('vault-alert', err.message);
+    }
+  }
+</script>
+
+</body>
+</html>

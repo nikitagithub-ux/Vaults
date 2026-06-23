@@ -151,7 +151,7 @@
     try {
       const data = await apiCall('/auth/login', 'POST', { email, password });
       saveTokens(data.access_token, data.refresh_token);
-      window.location.href = '/frontend/dashboard.html';
+      window.location.href = 'dashboard.html';
     } catch (err) {
       showAlert('alert-container', err.message);
     }
@@ -176,7 +176,7 @@
       const data = await apiCall('/auth/register', 'POST', { name, email, password });
       saveTokens(data.access_token, data.refresh_token);
       saveUser(data.user);
-      window.location.href = '/frontend/dashboard.html';
+      window.location.href = 'onboarding.html';
     } catch (err) {
       showAlert('alert-container', err.message);
     }
@@ -190,6 +190,5 @@
     }
   });
 </script>
-
 </body>
 </html>

@@ -26,7 +26,7 @@ def categorize_merchant(merchant_name: str, upi_id: str, vaults: list) -> dict:
     if upi_id:
         merchant_info.append(f"UPI ID: {upi_id}")
 
-    prompt = f"""You are a financial assistant helping categorize a payment into budget vaults.
+    prompt = f"""You are an advanced financial intelligence assistant. Your job is to analyze a transaction merchant or UPI ID, deduce the underlying business type, and map it semantically to the user's custom budget vaults.
 
 Payment details:
 {chr(10).join(merchant_info)}
@@ -34,23 +34,24 @@ Payment details:
 Available vaults:
 {vault_list}
 
-Instructions:
-- Look at the merchant and decide what TYPE of purchase this is
-- Then check if any vault ACTUALLY matches that purchase type
-- If no vault matches, say NONE and explain what type of vault would be appropriate
-- Only suggest a vault if it genuinely matches — don't force a match
-- Mark confidence LOW if the merchant name is ambiguous or unclear
+Instructions for Deciphering & Mapping:
+1. **Analyze the UPI Handle/Merchant Name:** Extract core brand names. Ignore banking suffixes (like @icici, @hdfc, @okaxis) unless the prefix itself is blank. 
+2. **Deduce Business Domain:** Determine what the merchant sells (e.g., "Lenskart" -> Eyewear/Opticals; "Apollo" -> Pharmacy/Healthcare; "Croma" -> Electronics).
+3. **Semantic Mapping to Custom Vaults:** Look at the user's available vaults. Users name things uniquely. Map the business domain to the *closest semantic concept*, even if the wording is unconventional (e.g., Healthcare maps perfectly to a vault named "Medicine", "Medical", or "Dieseas". Eyewear maps to "Shopping", "Glasses", or "Eye").
+4. **Handle Ambiguity Intelligently:** 
+   - If a merchant is dual-nature (e.g., "Apple" could be digital services, electronics, or groceries), look at the available vaults for clues. If the user only has a "Gadgets" vault, lean towards electronics. If they have both "Food" and "Tech", flag confidence as LOW but pick the most statistically likely one or offer both if they tie.
+   - If the merchant name is completely generic or unrecognizable, mark confidence as LOW.
 
-Examples:
-- "Dominos Pizza" with Food vault → suggest Food, HIGH confidence
-- "Croma Electronics" with only Food/Medical vaults → NONE, LOW confidence, suggest creating Electronics vault
-- "apollo@hdfc" with Medical vault → suggest Medical, HIGH confidence
-- "apple@icici" → LOW confidence, ambiguous
+Examples of Semantic Mapping:
+- Merchant: apollo@icici | Vaults: [Food, Savings, Dieseas] → Suggest: "Dieseas" (High confidence - Apollo is a known medical/pharmacy chain).
+- Merchant: lenskart@oksbi | Vaults: [Rent, Eye, Investments] → Suggest: "Eye" (High confidence - Lenskart sells glasses/eyewear).
+- Merchant: apple@hdfc | Vaults: [Groceries, Tech, Transport] → Suggest: "Tech" (Low confidence - Ambiguous brand, but "Tech" fits Apple Inc. products).
+- Merchant: croma@icici | Vaults: [Food, Medical] → Suggest: NONE (Low confidence - Croma is electronics, no matching vault exists).
 
 Reply in this exact format:
 VAULTS: <vault name 1>, <vault name 2> (or NONE if no vault matches)
 CATEGORY: <single category word>
-REASON: <one short sentence>
+REASON: <one short sentence explaining the semantic deduction>
 CONFIDENCE: <HIGH or LOW>
 SUGGESTION: <if NONE, suggest what type of vault to create, otherwise leave blank>"""
 

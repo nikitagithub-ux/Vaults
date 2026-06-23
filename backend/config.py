@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     GROQ_API_KEY: str
+    GMAIL_SENDER: str   
+    GMAIL_APP_PASSWORD: str
 
     class Config:
         env_file = ".env"

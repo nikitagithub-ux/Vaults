@@ -57,34 +57,6 @@ def register_user(db: Session, name: str, email: str, password: str):
         hashed_password=hash_password(password)
     )
     db.add(user)
-    db.flush()  # gets user.id without committing yet
-
-    # auto create a default simulated bank account
-    fake_account_number = str(uuid.uuid4().int)[:12]
-    bank_account = BankAccount(
-        user_id=user.id,
-        bank_name="Simulated Bank",
-        account_number=fake_account_number,
-        ifsc_code="SIM0000001",
-        account_holder_name=name,
-        balance=0,
-        is_primary=True
-    )
-    db.add(bank_account)
-    db.flush()  # gets bank_account.id without committing yet
-
-    # auto create penalty pool vault
-    penalty_vault = Vault(
-        user_id=user.id,
-        bank_account_id=bank_account.id,
-        name="Penalty Pool",
-        description="Auto-created. Holds penalty charges for vault violations.",
-        color="#FF0000",
-        allocated_amount=Decimal("0"),
-        current_balance=Decimal("0"),
-        is_locked=True
-    )
-    db.add(penalty_vault)
     db.commit()  # one single commit for everything
     db.refresh(user)
 
